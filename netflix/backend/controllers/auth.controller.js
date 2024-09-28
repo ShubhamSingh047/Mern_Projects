@@ -1,5 +1,6 @@
 import { User } from "../models/user.model.js";
 import bcryptjs from "bcryptjs";
+import { gernrateTokenAndSetCookies } from "../utils/genrateToken.js";
 
 export const signup = async (req, res) => {
   try {
@@ -42,18 +43,17 @@ export const signup = async (req, res) => {
     const hashedPassword = await bcryptjs.hash(password, salt);
 
     const newUser = new User({
-      // email: email,
-      // password: password,
-      // username: username,
-      // image:image
       email,
       password: hashedPassword,
       username,
       image,
     });
 
+    gernrateTokenAndSetCookies(newUser._id, res);
     await newUser.save();
-    res.status(201).json({
+
+    //remove password from response
+    return res.status(201).json({
       success: true,
       message: "User created successfully",
       user: {
@@ -70,9 +70,45 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  res.send("log in!");
+  const { email, password } = req.body;
+  try {
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and password are required !" });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "invalid credentials !" });
+    }
+
+    const isPasswordCorrect = await bcryptjs.compare(password, user.password);
+    if (!isPasswordCorrect) {
+      return res
+        .status(400)
+        .json({ success: false, message: "invalid credentials!" });
+    }
+    gernrateTokenAndSetCookies(user._id, res);
+    return res.status(200).json({
+      success: true,
+      message: "User logged in successfully",
+      user: {
+        ...user._doc,
+        password: "",
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 export const logout = async (req, res) => {
-  res.send("log out!");
+  try {
+    res.clearCookie("jwt-netflix");
+    res.status(200).json({ success: true, message: "Logged out successfuly" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };
