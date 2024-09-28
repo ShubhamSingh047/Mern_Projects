@@ -27,3 +27,13 @@ app.use("/client", clientRoutes);
 app.use("/general", generalRoutes);
 app.use("/managment", managmentRoutes);
 app.use("/sales", salesRoutes);
+
+/* DB-setup */
+
+dotenv.config();
+
+const PORT = process.env.PORT || 9000;
+
+mongoose.connect(process.env.MONGO_URI).then(() => {
+  app.listen(PORT);
+});
